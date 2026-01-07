@@ -11,7 +11,7 @@ async function handleSearch() {
 
   try {
     const response = await fetch(
-      `/api/term/simple/${encodeURIComponent(query)}`,
+      `/yomitan/api/term/simple/${encodeURIComponent(query)}`,
     );
     const data = await response.json();
     renderResults(data.results);
