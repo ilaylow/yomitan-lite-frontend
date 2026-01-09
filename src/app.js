@@ -1,5 +1,8 @@
 import * as wanakana from "wanakana";
 
+// TODO: Move this to environment variable or backend proxy for security
+const OPENAI_API_KEY = "";
+
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const resultsContainer = document.getElementById("results");
@@ -11,6 +14,14 @@ wanakana.bind(searchInput, { IMEMode: true });
 // Clipboard listener
 const MAX_CLIPBOARD_LENGTH = 50;
 let lastClipboardContent = "";
+
+// Load saved toggle state
+clipboardToggle.checked = localStorage.getItem("clipboardEnabled") === "true";
+
+// Save toggle state on change
+clipboardToggle.addEventListener("change", () => {
+  localStorage.setItem("clipboardEnabled", clipboardToggle.checked);
+});
 
 async function checkClipboard() {
   if (!clipboardToggle.checked) return;
@@ -66,8 +77,8 @@ function renderResults(results) {
 
   resultsContainer.innerHTML = results
     .map(
-      (entry) => `
-            <div class="entry">
+      (entry, index) => `
+            <div class="entry" data-term="${entry.term}" data-index="${index}">
                 <div class="entry-header">
                     <span class="term">${entry.term}</span>
                     <span class="reading">${entry.reading}</span>
@@ -109,10 +120,66 @@ function renderResults(results) {
                       )
                       .join("")}
                 </div>
+                <div class="ai-section">
+                    <button class="ai-generate-btn" data-index="${index}">
+                        Generate sentence with AI
+                    </button>
+                    <div class="ai-spinner"></div>
+                    <div class="ai-result"></div>
+                </div>
             </div>
         `,
     )
     .join("");
+
+  // Attach click handlers to AI buttons
+  document.querySelectorAll(".ai-generate-btn").forEach((btn) => {
+    btn.addEventListener("click", handleGenerateSentence);
+  });
+}
+
+async function handleGenerateSentence(e) {
+  const btn = e.target;
+  const entry = btn.closest(".entry");
+  const term = entry.dataset.term;
+  const aiSection = entry.querySelector(".ai-section");
+  const spinner = aiSection.querySelector(".ai-spinner");
+  const resultDiv = aiSection.querySelector(".ai-result");
+
+  // Disable button and show spinner
+  btn.disabled = true;
+  btn.classList.add("disabled");
+  spinner.classList.add("active");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-5-nano",
+        messages: [
+          {
+            role: "user",
+            content: `Generate a simple Japanese sentence using the word "${term}". Provide the sentence in Japanese, followed by the English translation on a new line. Keep it natural and suitable for language learners.`,
+          },
+        ],
+        max_tokens: 150,
+      }),
+    });
+
+    const data = await response.json();
+    const sentence = data.choices[0].message.content;
+    resultDiv.innerHTML = `<div class="ai-sentence">${sentence.replace(/\n/g, "<br>")}</div>`;
+  } catch (error) {
+    resultDiv.innerHTML = `<div class="ai-error">Failed to generate sentence</div>`;
+    btn.disabled = false;
+    btn.classList.remove("disabled");
+  } finally {
+    spinner.classList.remove("active");
+  }
 }
 
 searchBtn.addEventListener("click", handleSearch);
