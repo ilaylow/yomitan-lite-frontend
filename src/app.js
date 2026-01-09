@@ -1,7 +1,7 @@
 import * as wanakana from "wanakana";
 
 // TODO: Move this to environment variable or backend proxy for security
-const OPENAI_API_KEY = "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
