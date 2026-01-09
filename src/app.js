@@ -1,6 +1,11 @@
+import * as wanakana from "wanakana";
+
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const resultsContainer = document.getElementById("results");
+
+// Bind wanakana to convert romaji to hiragana as you type
+wanakana.bind(searchInput, { IMEMode: true });
 
 async function handleSearch() {
   const query = searchInput.value.trim();
