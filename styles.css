@@ -32,9 +32,16 @@ h1 {
     letter-spacing: -0.5px;
 }
 
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
 .search-container {
     position: relative;
-    width: 100%;
+    flex: 1;
 }
 
 .search-input {
@@ -85,6 +92,66 @@ h1 {
     width: 18px;
     height: 18px;
     fill: #fff;
+}
+
+/* Clipboard Toggle */
+.clipboard-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.3s ease;
+}
+
+.clipboard-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.clipboard-toggle input {
+    display: none;
+}
+
+.toggle-slider {
+    width: 36px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.3s ease;
+}
+
+.toggle-slider::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s ease;
+}
+
+.clipboard-toggle input:checked + .toggle-slider {
+    background: #e94560;
+}
+
+.clipboard-toggle input:checked + .toggle-slider::after {
+    transform: translateX(16px);
+}
+
+.clipboard-icon {
+    width: 20px;
+    height: 20px;
+    fill: rgba(255, 255, 255, 0.5);
+    transition: fill 0.3s ease;
+}
+
+.clipboard-toggle input:checked ~ .clipboard-icon {
+    fill: #e94560;
 }
 
 /* Results */
