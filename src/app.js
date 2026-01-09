@@ -166,7 +166,7 @@ async function handleGenerateSentence(e) {
             content: `Generate a simple Japanese sentence using the word "${term}". Provide the sentence in Japanese, followed by the English translation on a new line. Keep it natural and suitable for language learners.`,
           },
         ],
-        max_tokens: 150,
+        max_completion_tokens: 150,
       }),
     });
 
