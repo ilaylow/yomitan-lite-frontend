@@ -17,10 +17,15 @@ async function checkClipboard() {
 
   try {
     const text = await navigator.clipboard.readText();
-    if (text && text !== lastClipboardContent && text.length <= MAX_CLIPBOARD_LENGTH) {
+    if (
+      text &&
+      text !== lastClipboardContent &&
+      text.length <= MAX_CLIPBOARD_LENGTH
+    ) {
       lastClipboardContent = text;
       searchInput.value = text;
       searchInput.dispatchEvent(new Event("input"));
+      handleSearch();
     }
   } catch (err) {
     // Clipboard access denied or unavailable
