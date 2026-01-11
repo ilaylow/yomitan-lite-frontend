@@ -7,9 +7,80 @@ const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const resultsContainer = document.getElementById("results");
 const clipboardToggle = document.getElementById("clipboardToggle");
+const historyList = document.getElementById("historyList");
 
 // Bind wanakana to convert romaji to hiragana as you type
 wanakana.bind(searchInput, { IMEMode: true });
+
+// Query history
+const MAX_HISTORY_LENGTH = 50;
+const HISTORY_STORAGE_KEY = "queryHistory";
+
+// Load history from localStorage
+function loadHistory() {
+  try {
+    const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Save history to localStorage
+function saveHistory(history) {
+  localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+}
+
+// Add query to history (avoid duplicates, most recent first)
+function addToHistory(query) {
+  if (!query || !query.trim()) return;
+
+  let history = loadHistory();
+
+  // Remove if already exists (to move it to top)
+  history = history.filter((item) => item !== query);
+
+  // Add to beginning
+  history.unshift(query);
+
+  // Keep only last 50
+  if (history.length > MAX_HISTORY_LENGTH) {
+    history = history.slice(0, MAX_HISTORY_LENGTH);
+  }
+
+  saveHistory(history);
+  renderHistory();
+}
+
+// Render history list
+function renderHistory() {
+  const history = loadHistory();
+
+  if (history.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">No history yet</div>';
+    return;
+  }
+
+  historyList.innerHTML = history
+    .map(
+      (query) =>
+        `<div class="history-item" data-query="${query}">${query}</div>`,
+    )
+    .join("");
+
+  // Attach click handlers
+  historyList.querySelectorAll(".history-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const query = item.dataset.query;
+      searchInput.value = query;
+      searchInput.dispatchEvent(new Event("input"));
+      handleSearch();
+    });
+  });
+}
+
+// Initialize history on load
+renderHistory();
 
 // Clipboard listener
 const MAX_CLIPBOARD_LENGTH = 50;
@@ -128,6 +199,8 @@ setInterval(checkClipboard, 500);
 async function handleSearch() {
   const query = searchInput.value.trim();
   if (!query) return;
+
+  addToHistory(query);
 
   resultsContainer.innerHTML =
     '<div class="loading"><div class="spinner"></div></div>';
