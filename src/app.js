@@ -1,7 +1,7 @@
 import * as wanakana from "wanakana";
 
 // TODO: Move this to environment variable or backend proxy for security
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
@@ -13,7 +13,9 @@ wanakana.bind(searchInput, { IMEMode: true });
 
 // Clipboard listener
 const MAX_CLIPBOARD_LENGTH = 50;
+const MIN_OCR_CONFIDENCE = 60;
 let lastClipboardContent = "";
+let lastImageHash = "";
 
 // Load saved toggle state
 clipboardToggle.checked = localStorage.getItem("clipboardEnabled") === "true";
@@ -27,19 +29,93 @@ async function checkClipboard() {
   if (!clipboardToggle.checked) return;
 
   try {
-    const text = await navigator.clipboard.readText();
-    if (
-      text &&
-      text !== lastClipboardContent &&
-      text.length <= MAX_CLIPBOARD_LENGTH
-    ) {
-      lastClipboardContent = text;
-      searchInput.value = text;
-      searchInput.dispatchEvent(new Event("input"));
-      handleSearch();
+    const clipboardItems = await navigator.clipboard.read();
+
+    for (const item of clipboardItems) {
+      // Check for image types
+      const imageType = item.types.find((type) => type.startsWith("image/"));
+      if (imageType) {
+        const blob = await item.getType(imageType);
+        const imageHash = `${blob.size}-${blob.type}`;
+
+        // Only process if it's a new image
+        if (imageHash !== lastImageHash) {
+          lastImageHash = imageHash;
+          await handleClipboardImage(blob);
+        }
+        return; // Image found, skip text check
+      }
+
+      // Check for text
+      if (item.types.includes("text/plain")) {
+        const blob = await item.getType("text/plain");
+        const text = await blob.text();
+
+        if (
+          text &&
+          text !== lastClipboardContent &&
+          text.length <= MAX_CLIPBOARD_LENGTH
+        ) {
+          lastClipboardContent = text;
+          searchInput.value = text;
+          searchInput.dispatchEvent(new Event("input"));
+          handleSearch();
+        }
+      }
     }
   } catch (err) {
     // Clipboard access denied or unavailable
+  }
+}
+
+async function handleClipboardImage(blob) {
+  // Show loading state
+  resultsContainer.innerHTML =
+    '<div class="loading"><div class="spinner"></div><span style="margin-left: 12px; color: rgba(255,255,255,0.7);">Processing image...</span></div>';
+
+  try {
+    const formData = new FormData();
+    formData.append("file", blob, "screenshot.png");
+
+    // Send to API endpoint
+    const response = await fetch("/yomitan/ocr", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    // Filter words by confidence and concatenate text
+    if (data.words && data.words.length > 0) {
+      if (data.type === "primary") {
+        const text = data.words
+          .filter((word) => word.confidence >= MIN_OCR_CONFIDENCE)
+          .map((word) => word.text)
+          .join("");
+
+        if (text) {
+          searchInput.value = text;
+          searchInput.dispatchEvent(new Event("input"));
+          handleSearch();
+        } else {
+          resultsContainer.innerHTML =
+            '<div class="no-results">No text detected with sufficient confidence</div>';
+        }
+      } else if (data.type === "secondary") {
+        searchInput.value = data.words;
+        searchInput.dispatchEvent(new Event("input"));
+        handleSearch();
+      }
+    } else {
+      resultsContainer.innerHTML =
+        '<div class="no-results">No text detected in image</div>';
+    }
+  } catch (error) {
+    resultsContainer.innerHTML =
+      '<div class="error">Failed to process image</div>';
   }
 }
 
@@ -47,7 +123,7 @@ async function checkClipboard() {
 window.addEventListener("focus", checkClipboard);
 
 // Also poll periodically when toggle is enabled (for background clipboard changes)
-setInterval(checkClipboard, 1000);
+setInterval(checkClipboard, 500);
 
 async function handleSearch() {
   const query = searchInput.value.trim();
