@@ -78,7 +78,7 @@ async function handleClipboardImage(blob) {
     formData.append("file", blob, "screenshot.png");
 
     // Send to API endpoint
-    const response = await fetch("/yomitan/ocr", {
+    const response = await fetch("/yomitan/ocr/", {
       method: "POST",
       headers: {
         Accept: "application/json",
